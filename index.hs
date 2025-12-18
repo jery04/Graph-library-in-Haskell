@@ -3,7 +3,7 @@ data Arista = Arista Vertice Vertice (Maybe Int)
 data Grafo = Grafo [Vertice] [Arista] Bool deriving (Show, Eq)
 
 -- Implementación de BFS
-bfs :: Grafo -> Arista -> [Arista]
+bfs :: Grafo -> Vertice -> [Vertice]
 bfs (Grafo vs as) start = bfsAux [start] []
     where
         vecinos v = [y | (x, y) <- as, x == v] ++ [x | (x, y) <- as, y == v]
