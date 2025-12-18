@@ -1,24 +1,9 @@
--- type Vertice = Int
--- type Arista = (Vertice, Vertice)
--- data Grafo = Grafo [Vertice] [Arista] deriving (Show, Eq)
-
-type Node = Int
-
-data Edge = Edge
-  { edgeFrom :: Node
-  , edgeTo   :: Node
-  , cost     :: Maybe Int
-  }
-
-data Graph = Graph
-  { nodes    :: [Node]
-  , edges    :: [Edge]
-  , directed :: Bool
-  }
-
+type Vertice = Int
+data Arista = Arista Vertice Vertice (Maybe Int) 
+data Grafo = Grafo [Vertice] [Arista] Bool deriving (Show, Eq)
 
 -- Implementación de BFS
-bfs :: Grafo -> Vertice -> [Vertice]
+bfs :: Grafo -> Arista -> [Arista]
 bfs (Grafo vs as) start = bfsAux [start] []
     where
         vecinos v = [y | (x, y) <- as, x == v] ++ [x | (x, y) <- as, y == v]
