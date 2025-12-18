@@ -2,19 +2,21 @@ type Vertice = Int
 type Arista = (Vertice, Vertice, Int)
 data Grafo = Grafo [Vertice] [Arista] Bool deriving (Show, Eq)
 
+-- Vecinos de un vértice
+vecinos :: Grafo -> Vertice -> [Vertice]
+vecinos (Grafo _ as dir) v
+    | dir = [ y | (x, y, _) <- as, x == v ]
+    | otherwise = [ y | (x, y, _) <- as, x == v ] ++ [ x | (x, y, _) <- as, y == v ]
+
 -- Implementación de BFS
 bfs :: Grafo -> Vertice -> [Vertice]
 bfs (Grafo vs as dir) start = bfsAux [start] []
     where
-        vecinos v
-          | dir = [ y | (x, y, _) <- as, x == v ]
-          | otherwise = [ y | (x, y, _) <- as, x == v ] ++ [ x | (x, y, _) <- as, y == v ]
-
         bfsAux [] visitados = visitados
         bfsAux (q:qs) visitados
             | q `elem` visitados = bfsAux qs visitados
             | otherwise = bfsAux (qs ++ nuevos) (visitados ++ [q])
-            where nuevos = filter (`notElem` (visitados ++ [q])) (vecinos q)
+            where nuevos = filter (`notElem` (visitados ++ [q])) (vecinos (Grafo vs as dir) q)
 
 
 -- Verifica si un grafo no dirigido es conexo usando BFS
@@ -28,14 +30,10 @@ isConexo g@(Grafo (v:vs) _ _) =
 dfs :: Grafo -> Vertice -> [Vertice]
 dfs (Grafo vs as dir) start = dfsAux [start] []
     where
-        vecinos v
-          | dir = [ y | (x, y, _) <- as, x == v ]
-          | otherwise = [ y | (x, y, _) <- as, x == v ] ++ [ x | (x, y, _) <- as, y == v ]
-
         dfsAux [] visitados = visitados
         dfsAux (s:ss) visitados
             | s `elem` visitados = dfsAux ss visitados
-            | otherwise = dfsAux (vecinos s ++ ss) (visitados ++ [s])
+            | otherwise = dfsAux (vecinos (Grafo vs as dir) s ++ ss) (visitados ++ [s])
 
 main :: IO ()
 main = do
