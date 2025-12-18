@@ -25,15 +25,26 @@ isConexo g@(Grafo (v:vs) _ _) =
     in all (`elem` visitados) (v:vs)
 
 -- Implementación de DFS
--- dfs :: Grafo -> Vertice -> [Vertice]
--- dfs (Grafo vs as dir) start = dfsAux [start] []
+dfs :: Grafo -> Vertice -> [Vertice]
+dfs (Grafo vs as dir) start = dfsAux [start] []
+    where
+        vecinos v
+          | dir = [ y | (x, y, _) <- as, x == v ]
+          | otherwise = [ y | (x, y, _) <- as, x == v ] ++ [ x | (x, y, _) <- as, y == v ]
+
+        dfsAux [] visitados = visitados
+        dfsAux (s:ss) visitados
+            | s `elem` visitados = dfsAux ss visitados
+            | otherwise = dfsAux (vecinos s ++ ss) (visitados ++ [s])
 
 main :: IO ()
 main = do
     let vertices = [1,2,3,4,5,6]
         aristas = [(1,2,1), (2,4,1), (2,5,1), (5,4,1), (1,3,1), (3,6,1)]
-        grafo = Grafo vertices aristas True
+        grafo = Grafo vertices aristas False
         resultadoBFS = bfs grafo 5
+        resultadoDFS = dfs grafo 5
         conexo = isConexo grafo
     putStrLn $ "Recorrido BFS desde 5: " ++ show resultadoBFS
+    putStrLn $ "Recorrido DFS desde 5: " ++ show resultadoDFS
     putStrLn $ "¿El grafo es conexo? " ++ show conexo
