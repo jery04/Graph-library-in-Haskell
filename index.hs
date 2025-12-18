@@ -1,6 +1,21 @@
-type Vertice = Int
-type Arista = (Vertice, Vertice)
-data Grafo = Grafo [Vertice] [Arista] deriving (Show, Eq)
+-- type Vertice = Int
+-- type Arista = (Vertice, Vertice)
+-- data Grafo = Grafo [Vertice] [Arista] deriving (Show, Eq)
+
+type Node = Int
+
+data Edge = Edge
+  { edgeFrom :: Node
+  , edgeTo   :: Node
+  , cost     :: Maybe Int
+  }
+
+data Graph = Graph
+  { nodes    :: [Node]
+  , edges    :: [Edge]
+  , directed :: Bool
+  }
+
 
 -- Implementación de BFS
 bfs :: Grafo -> Vertice -> [Vertice]
@@ -23,7 +38,7 @@ isConexo g@(Grafo (v:vs) _) =
 
 main :: IO ()
 main = do
-    let vertices = [1,2,3,4,5,6,]
+    let vertices = [1,2,3,4,5,6]
         aristas = [(1,2), (2,4), (2,5), (5,4), (1,3), (3,6)]
         grafo = Grafo vertices aristas
         resultadoBFS = bfs grafo 5
