@@ -109,6 +109,93 @@ prim (Grafo (v:vs) aristas _) = primAux [v] vs []
             in primAux (newVertex : visited) (delete newVertex remaining) ((uMin,vMin,wMin):mst)
 
 
+-- Verifica si un grafo es euleriano
+isEuleriano :: Grafo -> Bool
+isEuleriano g@(Grafo vs as dir)
+    | dir = all even gradosEntrantes && all even gradosSalientes
+    | otherwise = all even grados && isConexo g
+    where
+        grados = [length (vecinos g v) | v <- vs]
+        gradosEntrantes = [length [ x | (x, y, _) <- as, y == v ] | v <- vs]
+        gradosSalientes = [length [ y | (x, y, _) <- as, x == v ] | v <- vs]
+
+
+-- Verifica si un grafo es hmiltoniano
+esHamiltoniano :: Grafo -> Bool
+esHamiltoniano (Grafo [] _ _) = False
+esHamiltoniano (Grafo vs aristas _) = hamiltonAux [v0] (length vs)
+  where
+    v0 = head vs
+
+    -- Verifica si hay arista entre dos vértices (no dirigido)
+    adyacente u v =
+      (u, v, 0) `elem` sinPeso || (v, u, 0) `elem` sinPeso
+      where
+        sinPeso = [(x,y,0) | (x,y,_) <- aristas]
+
+    -- Backtracking
+    hamiltonAux :: [Vertice] -> Int -> Bool
+    hamiltonAux camino n
+      | length camino == n =
+          adyacente (last camino) (head camino)  -- cerrar ciclo
+      | otherwise =
+          or [ hamiltonAux (camino ++ [v]) n
+             | v <- vs
+             , v `notElem` camino
+             , adyacente (last camino) v
+             ]
+
+
+-- Halla las aristas puentes en un grafo no dirigido
+aristasPuente :: Grafo -> [Arista]
+aristasPuente (Grafo vs as dir)
+    | dir = []  -- No se consideran puentes en grafos dirigidos
+    | otherwise = snd (dfsPuente (-1) (head vs) 0 [] [] [])
+  where
+    -- Vecinos sin peso
+    vecinos v = [ y | (x,y,_) <- as, x == v ] ++
+                [ x | (x,y,_) <- as, y == v ]
+
+    -- Buscar valor en lista de pares
+    buscar v ((x,t):xs)
+      | v == x    = t
+      | otherwise = buscar v xs
+    buscar _ [] = -1
+
+    -- DFS principal
+    dfsPuente padre u tiempo disc low puentes =
+      let
+        discU = tiempo
+        lowU  = tiempo
+        disc' = (u, discU) : disc
+        low'  = (u, lowU) : low
+      in
+        explorar u padre (vecinos u) (tiempo + 1) disc' low' puentes
+
+    -- Explora vecinos
+    explorar _ _ [] _ disc low puentes = (low, puentes)
+
+    explorar u padre (v:vs) tiempo disc low puentes
+      | buscar v disc == -1 =
+          let
+            (low', puentes') = dfsPuente u v tiempo disc low puentes
+            lowU = min (buscar u low') (buscar v low')
+            low'' = (u, lowU) : filter ((/=u) . fst) low'
+            esPuente = buscar v low' > buscar u disc
+            puentesFinal =
+              if esPuente
+              then (u,v,0) : puentes'
+              else puentes'
+          in explorar u padre vs tiempo disc low'' puentesFinal
+
+      | v /= padre =
+          let
+            lowU = min (buscar u low) (buscar v disc)
+            low' = (u, lowU) : filter ((/=u) . fst) low
+          in explorar u padre vs tiempo disc low' puentes
+
+      | otherwise = explorar u padre vs tiempo disc low puentes
+
 
 -- Implementación de BFS
 bfs :: Grafo -> Vertice -> [Vertice]
@@ -288,7 +375,7 @@ esBosque g@(Grafo vs _ _) = all esArbol (componentes g)
 main :: IO ()
 main = do
     let vertices = [1,2,3,4,5,6,7,8]
-    let aristas = [(1,2,1), (2,4,1), (2,5,1), (5,4,1), (1,3,1), (3,6,1), (7,8,1)]
+    let aristas = [(1,2,1), (2,3,1), (3,4,1), (5,4,1), (5,6,1), (7,6,1), (7,8,1), (8,4,1)]
     let grafo = Grafo vertices aristas False
     
     --Jery
@@ -319,6 +406,9 @@ main = do
     let (minG, maxG) = gradoMinMax grafo
     let arbolKruskal = kruskal grafo
     let arbolPrim = prim grafo
+    let euleriano = isEuleriano grafo
+    let hamiltoniano = esHamiltoniano grafo
+    let aristaspuente = aristasPuente grafo
     putStrLn $ "Recorrido DFS desde 5: " ++ show resultadoDFS
     putStrLn $ "¿El grafo es regular? " ++ show regular
     putStrLn $ "Número de independencia del grafo: " ++ show independencia
@@ -326,3 +416,6 @@ main = do
     putStrLn $ "Grado mínimo: " ++ show minG ++ ", Grado máximo: " ++ show maxG
     putStrLn $ "Árbol de expansión mínima (Kruskal): " ++ show arbolKruskal
     putStrLn $ "Árbol de expansión mínima (Prim): " ++ show arbolPrim
+    putStrLn $ "¿El grafo es euleriano? " ++ show euleriano
+    putStrLn $ "¿El grafo es hamiltoniano? " ++ show hamiltoniano
+    putStrLn $ "Aristas puentes en el grafo: " ++ show aristaspuente
