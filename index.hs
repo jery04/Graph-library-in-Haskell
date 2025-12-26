@@ -1,3 +1,5 @@
+import Data.List (sortOn)
+
 type Vertice = Int
 type Arista = (Vertice, Vertice, Int)
 data Grafo = Grafo [Vertice] [Arista] Bool deriving (Show, Eq)
@@ -195,11 +197,61 @@ esBosque g@(Grafo vs _ _) = all esArbol (componentes g)
               in subg : go rest visitados'
 
 
+-- Retorna la arista con menor peso en el grafo
+aristaMenor :: Grafo -> Maybe Arista
+aristaMenor (Grafo _ [] _) = Nothing
+aristaMenor (Grafo _ as _) = Just $ foldl1 minPorPeso as
+  where
+    minPorPeso a@(_,_,wa) b@(_,_,wb) = if wa <= wb then a else b
+
+
+-- Retorna la arista con mayor peso en el grafo 
+aristaMayor :: Grafo -> Maybe Arista
+aristaMayor (Grafo _ [] _) = Nothing
+aristaMayor (Grafo _ as _) = Just $ foldl1 maxPorPeso as
+  where
+    maxPorPeso a@(_,_,wa) b@(_,_,wb) = if wa >= wb then a else b
+
+
+-- Kruskal: retorna Just árbol de expansión mínima si existe 
+kruskal :: Grafo -> Maybe Grafo
+kruskal (Grafo vs as dir)
+  | dir = Nothing
+  | null vs = Just (Grafo [] [] False)
+  | otherwise =
+      let sorted = sortOn (\(_,_,w) -> w) as
+          initialSets = map (\v -> [v]) vs
+          (mstEdges, _) = foldl step ([], initialSets) sorted
+          tree = Grafo vs mstEdges False
+      in if length mstEdges == (length vs - 1) && esArbol tree
+           then Just tree
+           else Nothing
+  where
+    step :: ([Arista], [[Vertice]]) -> Arista -> ([Arista], [[Vertice]])
+    step (mst, sets) e@(u,v,_) =
+      let setU = findSet u sets
+          setV = findSet v sets
+      in if setU /= setV
+           then (mst ++ [e], unionSets setU setV sets)
+           else (mst, sets)
+
+    findSet :: Vertice -> [[Vertice]] -> [Vertice]
+    findSet x sets = head [s | s <- sets, x `elem` s]
+
+    unionSets :: [Vertice] -> [Vertice] -> [[Vertice]] -> [[Vertice]]
+    unionSets s1 s2 sets = (s1 ++ s2) : filter (\s -> not (s == s1 || s == s2)) sets
+
+
+-- Calcula el peso total de un grafo (suma de pesos de sus aristas)
+pesoTotal :: Grafo -> Int
+pesoTotal (Grafo _ as _) = sum [w | (_,_,w) <- as]
+
+
 -- Función principal para probar las implementaciones
 main :: IO ()
 main = do
-    let vertices = [1,2,3,4,5,6,7,8]
-    let aristas = [(1,2,1), (2,4,1), (2,5,1), (5,4,1), (1,3,1), (3,6,1), (7,8,1)]
+    let vertices = [1,2,3,4,5,6]
+    let aristas = [(1,2,1), (2,4,2), (2,5,3), (5,4,4), (1,3,5), (3,6,6)]
     let grafo = Grafo vertices aristas False
     let resultadoBFS = bfs grafo 5
     let resultadoDFS = dfs grafo 5
@@ -211,6 +263,10 @@ main = do
     let tieneCiclos = hasCiclos grafo
     let esArbolGrafo = esArbol grafo
     let esBosqueGrafo = esBosque grafo
+    let aristaMin = aristaMenor grafo
+    let aristaMax = aristaMayor grafo
+    let pesoGraph = pesoTotal grafo
+    let kruskalResult = kruskal grafo
     putStrLn $ "Recorrido BFS desde 5: " ++ show resultadoBFS
     putStrLn $ "Recorrido DFS desde 5: " ++ show resultadoDFS
     putStrLn $ "¿El grafo es conexo? " ++ show conexo
@@ -221,3 +277,10 @@ main = do
     putStrLn $ "¿El grafo tiene ciclos? " ++ show tieneCiclos
     putStrLn $ "¿El grafo es un árbol? " ++ show esArbolGrafo
     putStrLn $ "¿El grafo es un bosque? " ++ show esBosqueGrafo
+    putStrLn $ "Arista de menor peso: " ++ show aristaMin
+    putStrLn $ "Arista de mayor peso: " ++ show aristaMax
+    putStrLn $ "Peso total: " ++ show pesoGraph
+    putStrLn $ "Kruskal (MST): " ++ show kruskalResult
+    case kruskalResult of
+      Just t -> putStrLn $ "Peso MST: " ++ show (pesoTotal t)
+      Nothing -> putStrLn "Kruskal: No se pudo construir MST (grafo no conexo)"
