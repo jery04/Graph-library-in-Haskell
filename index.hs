@@ -1,4 +1,5 @@
-import Data.List (sortOn)
+import Data.List (sortOn, minimumBy)
+import Data.Maybe (fromMaybe)
 
 type Vertice = Int
 type Arista = (Vertice, Vertice, Int)
@@ -247,6 +248,64 @@ pesoTotal :: Grafo -> Int
 pesoTotal (Grafo _ as _) = sum [w | (_,_,w) <- as]
 
 
+-- Dijkstra
+dijkstra :: Grafo -> Vertice -> Maybe [(Vertice, Maybe Int)]
+dijkstra (Grafo vs as dir) source
+  | source `notElem` vs = Nothing
+  | any (\(_,_,w) -> w < 0) as = Nothing
+  | otherwise = Just $ map (\v -> (v, fromMaybe Nothing (lookup v finalDists))) vs
+  where
+    -- Adyacencia que respeta si el grafo es dirigido o no
+    adj :: Vertice -> [(Vertice, Int)]
+    adj v
+      | dir = [ (y,w) | (x,y,w) <- as, x == v ]
+      | otherwise = [ (y,w) | (x,y,w) <- as, x == v ] ++ [ (x,w) | (x,y,w) <- as, y == v ]
+
+    -- Distancias iniciales (Nothing = infinito)
+    initDists :: [(Vertice, Maybe Int)]
+    initDists = [ (v, if v == source then Just 0 else Nothing) | v <- vs ]
+
+    finalDists :: [(Vertice, Maybe Int)]
+    finalDists = dijkstraLoop [] initDists
+
+    dijkstraLoop :: [Vertice] -> [(Vertice, Maybe Int)] -> [(Vertice, Maybe Int)]
+    dijkstraLoop visited dists =
+      let unvisited = filter (`notElem` visited) vs
+          candidate = selectMin unvisited dists
+      in case candidate of
+           Nothing -> dists
+           Just u ->
+             let distU = case lookup u dists of
+                           Just (Just val) -> Just val
+                           _ -> Nothing
+                 neighbors = adj u
+                 dists' = case distU of
+                            Nothing -> dists
+                            Just du -> foldl (relax du) dists neighbors
+             in dijkstraLoop (u:visited) dists'
+
+    selectMin :: [Vertice] -> [(Vertice, Maybe Int)] -> Maybe Vertice
+    selectMin unvis ds =
+      let candidates = [ (v,d) | (v,d) <- ds, v `elem` unvis, d /= Nothing ]
+      in if null candidates then Nothing else Just $ fst $ minimumBy cmp candidates
+      where
+        cmp (_, Just a) (_, Just b) = compare a b
+        cmp _ _ = EQ
+
+    relax :: Int -> [(Vertice, Maybe Int)] -> (Vertice, Int) -> [(Vertice, Maybe Int)]
+    relax du dists (v,w) = updateDistance dists v (Just (du + w))
+
+    updateDistance :: [(Vertice, Maybe Int)] -> Vertice -> Maybe Int -> [(Vertice, Maybe Int)]
+    updateDistance ds v newD = map update ds
+      where
+        update (x,d)
+          | x /= v = (x,d)
+          | otherwise = case (d, newD) of
+                          (Nothing, nd) -> (x, nd)
+                          (Just old, Nothing) -> (x, Just old)
+                          (Just old, Just nd) -> if nd < old then (x, Just nd) else (x, Just old)
+
+
 -- Función principal para probar las implementaciones
 main :: IO ()
 main = do
@@ -267,6 +326,7 @@ main = do
     let aristaMax = aristaMayor grafo
     let pesoGraph = pesoTotal grafo
     let kruskalResult = kruskal grafo
+    let dijkstraResult = dijkstra grafo 1
     putStrLn $ "Recorrido BFS desde 5: " ++ show resultadoBFS
     putStrLn $ "Recorrido DFS desde 5: " ++ show resultadoDFS
     putStrLn $ "¿El grafo es conexo? " ++ show conexo
@@ -284,3 +344,6 @@ main = do
     case kruskalResult of
       Just t -> putStrLn $ "Peso MST: " ++ show (pesoTotal t)
       Nothing -> putStrLn "Kruskal: No se pudo construir MST (grafo no conexo)"
+    case dijkstraResult of
+      Nothing -> putStrLn "Dijkstra: vértice origen no existe o hay pesos negativos"
+      Just ds -> putStrLn $ "Dijkstra distancias desde 1: " ++ show ds
