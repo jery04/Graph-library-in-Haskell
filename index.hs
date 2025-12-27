@@ -306,6 +306,40 @@ dijkstra (Grafo vs as dir) source
                           (Just old, Just nd) -> if nd < old then (x, Just nd) else (x, Just old)
 
 
+-- Orden topológico (Kahn). Retorna Nothing si no es dirigido o hay ciclos
+ordenTopologico :: Grafo -> Maybe [Vertice]
+ordenTopologico (Grafo vs as dir)
+  | not dir = Nothing
+  | otherwise = kahn [] initialQueue as
+  where
+    -- calcula in-degree de un vértice respecto a la lista de aristas
+    inDegree v edges = length [ () | (_, y, _) <- edges, y == v ]
+
+    initialQueue = [ v | v <- vs, inDegree v as == 0 ]
+
+    -- Kahn: sorted acumula vértices en orden, queue es la lista de vértices con in-degree 0
+    kahn sorted [] remainingEdges
+      | null remainingEdges = Just (reverse sorted)
+      | otherwise = Nothing  -- quedan aristas => ciclo
+    kahn sorted (q:qs) remainingEdges =
+      let sorted' = q : sorted
+          -- aristas después de remover las salientes de q
+          edges' = filter (\(u,_,_) -> u /= q) remainingEdges
+          -- obtener adyacentes de q en la lista original de aristas (antes de filtrar)
+          adyacentes = [ v | (u,v,_) <- remainingEdges, u == q ]
+          -- nuevos vértices cuyo in-degree llega a 0 tras quitar aristas salientes de q
+          nuevos = [ v | v <- adyacentes, inDegree v edges' == 0 ]
+          queue' = qs ++ nuevos
+      in kahn sorted' queue' edges'
+
+
+-- Verifica si un grafo es DAG (dirigido y acíclico)
+esDAG :: Grafo -> Bool
+esDAG g = case ordenTopologico g of
+  Just _  -> True
+  Nothing -> False
+
+
 -- Función principal para probar las implementaciones
 main :: IO ()
 main = do
@@ -327,6 +361,14 @@ main = do
     let pesoGraph = pesoTotal grafo
     let kruskalResult = kruskal grafo
     let dijkstraResult = dijkstra grafo 1
+
+    -- Ejemplo de orden topológico (grafo dirigido acíclico)
+    let verticesD = [1,2,3,4,5,6]
+    let aristasD = [(1,2,0),(1,3,0),(2,4,0),(3,4,0),(4,5,0),(5,6,0)]
+    let grafoDir = Grafo verticesD aristasD True
+    let ordenTop = ordenTopologico grafoDir
+    let esDagGrafo = esDAG grafo
+    let esDagGrafoDir = esDAG grafoDir
     putStrLn $ "Recorrido BFS desde 5: " ++ show resultadoBFS
     putStrLn $ "Recorrido DFS desde 5: " ++ show resultadoDFS
     putStrLn $ "¿El grafo es conexo? " ++ show conexo
@@ -347,3 +389,6 @@ main = do
     case dijkstraResult of
       Nothing -> putStrLn "Dijkstra: vértice origen no existe o hay pesos negativos"
       Just ds -> putStrLn $ "Dijkstra distancias desde 1: " ++ show ds
+    putStrLn $ "¿El grafo (no dirigido) es DAG? " ++ show esDagGrafo
+    putStrLn $ "¿El grafo dirigido es DAG? " ++ show esDagGrafoDir
+    putStrLn $ "Orden topológico (grafo dirigido): " ++ show ordenTop
