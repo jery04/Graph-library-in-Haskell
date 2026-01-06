@@ -4,9 +4,13 @@ import qualified Graphics.UI.Threepenny as UI
 import qualified Graphics.UI.Threepenny.SVG as SVG
 import Graphics.UI.Threepenny ( (#+) )
 import Graph
-import Data.List (nub)
+import Data.List (nub, intercalate)
 import Text.Read (readMaybe)
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, when)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import System.Random (randomRIO)
+import Numeric (showFFloat)
 
 main :: IO ()
 main = UI.startGUI UI.defaultConfig setup
@@ -107,31 +111,114 @@ parseEdges str = mapM parseEdge (filter (not . null) (map trim (splitOn ',' str)
                 _ -> Left ("Formato de nodos inválido: " ++ nodes)
             _ -> Left ("Formato de arista inválido: " ++ edgeStr)
 
+-- Función para calcular layout de grafo usando force-directed
+forceDirectedLayout :: [Int] -> [Arista] -> [(Int, (Double, Double))]
+forceDirectedLayout vertices edges = 
+    let n = length vertices
+        centerX = 300.0
+        centerY = 225.0
+        radius = 150.0
+        angleStep = 2 * pi / fromIntegral n
+        initialPositions = Map.fromList $ zip vertices $ map (\i -> let angle = fromIntegral i * angleStep
+                                                                       in (centerX + radius * cos angle, centerY + radius * sin angle)) [0..n-1]
+        -- Parámetros
+        k = sqrt (600 * 450 / fromIntegral n)  -- ideal distance
+        iterations = 50
+        -- Función para calcular fuerzas
+        calculateForces pos = Map.mapWithKey (\v p -> 
+            let add (x1,y1) (x2,y2) = (x1+x2, y1+y2)
+                repulsive = foldl add (0,0) [ let d = dist p p' 
+                                                  dx = fst p - fst p'
+                                                  dy = snd p - snd p'
+                                              in if d > 0 then (dx / d * k*k / d, dy / d * k*k / d) else (0,0)
+                                            | v' <- vertices, v' /= v, let Just p' = Map.lookup v' pos ]
+                attractive = foldl add (0,0) [ let Just p' = Map.lookup v' pos
+                                                   d = dist p p'
+                                                   dx = fst p' - fst p
+                                                   dy = snd p' - snd p
+                                               in if d > 0 then (dx / d * d*d / k, dy / d * d*d / k) else (0,0)
+                                             | (a,b,_) <- edges, let (v1,v2) = if a == v then (a,b) else if b == v then (b,a) else (0,0), v' <- [v2 | v1 == v] ]
+            in add repulsive attractive
+            ) pos
+        -- Iterar
+        iterateLayout pos 0 = pos
+        iterateLayout pos i = 
+            let forces = calculateForces pos
+                newPos = Map.mapWithKey (\v (x,y) -> 
+                    let (fx,fy) = forces Map.! v
+                        nx = x + fx * 0.1  -- damping
+                        ny = y + fy * 0.1
+                    in (max 50 (min 550 nx), max 50 (min 400 ny))  -- bounds
+                    ) pos
+            in if i >= iterations then newPos else iterateLayout newPos (i+1)
+    in Map.toList $ iterateLayout initialPositions 0
+    where
+        dist (x1,y1) (x2,y2) = sqrt ((x1-x2)^2 + (y1-y2)^2)
+
 renderGraph :: Grafo -> UI.UI UI.Element
-renderGraph (Grafo vertices edges _) = do
-    let positions = case length vertices of
-            1 -> [(1, (300, 225))]
-            2 -> [(1, (200, 225)), (2, (400, 225))]
-            3 -> [(1, (200, 150)), (2, (400, 150)), (3, (300, 300))]
-            4 -> [(1, (150, 150)), (2, (450, 150)), (3, (150, 300)), (4, (450, 300))]
-            5 -> [(1, (150, 150)), (2, (450, 150)), (3, (100, 300)), (4, (300, 300)), (5, (500, 300))]
-            6 -> [(1, (150, 150)), (2, (450, 150)), (3, (100, 225)), (4, (500, 225)), (5, (150, 300)), (6, (450, 300))]
-            7 -> [(1, (150, 150)), (2, (300, 150)), (3, (450, 150)), (4, (100, 225)), (5, (500, 225)), (6, (200, 300)), (7, (400, 300))]
-            8 -> [(1, (150, 150)), (2, (300, 150)), (3, (450, 150)), (4, (100, 225)), (5, (500, 225)), (6, (150, 300)), (7, (300, 300)), (8, (450, 300))]
-            9 -> [(1, (125, 150)), (2, (300, 150)), (3, (475, 150)), (4, (100, 225)), (5, (300, 225)), (6, (500, 225)), (7, (125, 300)), (8, (300, 300)), (9, (475, 300))]
-            _ -> [(1, (150, 150)), (2, (450, 150)), (3, (100, 300)), (4, (300, 300)), (5, (500, 300))] ++ [(v, (150 + (v-6)*50, 375)) | v <- [6..length vertices]]
+renderGraph (Grafo vertices edges isDirected) = do
+    let fmt p = (\s -> if s == "" then "0" else s) . showFFloat (Just 2) p
+        showPt (x,y) = fmt x "" ++ " " ++ fmt y ""
+    let positions = forceDirectedLayout vertices edges
     
     svg <- SVG.svg UI.# UI.set (UI.attr "width") "600" UI.# UI.set (UI.attr "height") "450"
     
-    forM_ edges $ \(a,b,_) -> do
+    forM_ edges $ \(a,b,w) -> do
         let Just (x1,y1) = lookup a positions
             Just (x2,y2) = lookup b positions
-        line <- SVG.line UI.# UI.set (UI.attr "x1") (show x1) UI.# UI.set (UI.attr "y1") (show y1) UI.# UI.set (UI.attr "x2") (show x2) UI.# UI.set (UI.attr "y2") (show y2) UI.# UI.set (UI.attr "stroke") "black" UI.# UI.set (UI.attr "stroke-width") "2"
-        UI.element svg #+ [UI.element line]
+        let lineAttrs = [UI.set (UI.attr "x1") (show x1), UI.set (UI.attr "y1") (show y1), UI.set (UI.attr "x2") (show x2), UI.set (UI.attr "y2") (show y2), UI.set (UI.attr "stroke") "#222", UI.set (UI.attr "stroke-width") "2", UI.set (UI.attr "stroke-linecap") "round"]
+        line <- foldl (UI.#) (SVG.line) lineAttrs
+        _ <- UI.element svg #+ [return line]
+
+        -- Dibujar flecha manual si es dirigido
+        when (isDirected && (x1 /= x2 || y1 /= y2)) $ do
+            let dx = x2 - x1
+                dy = y2 - y1
+                len = sqrt (dx*dx + dy*dy)
+            when (len > 0.1) $ do
+                let ux = dx / len
+                    uy = dy / len
+                    tipBack = 22
+                    baseBack = 40
+                    tipX = x2 - ux * tipBack  -- mueve la punta más atrás para que se vea completa
+                    tipY = y2 - uy * tipBack
+                    baseX = tipX - ux * baseBack
+                    baseY = tipY - uy * baseBack
+                    perp = 9
+                    p1 = (tipX, tipY)
+                    p2 = (baseX + (-uy)*perp, baseY + ux*perp)
+                    p3 = (baseX + uy*perp, baseY - ux*perp)
+                    pointsStr = intercalate " " (map showPt [p1, p2, p3])
+                arrow <- SVG.polygon UI.# UI.set (UI.attr "points") pointsStr UI.# UI.set (UI.attr "fill") "#d00" UI.# UI.set (UI.attr "stroke") "#d00" UI.# UI.set (UI.attr "stroke-linejoin") "round"
+                _ <- UI.element svg #+ [return arrow]
+                return ()
+        
+        -- Agregar etiqueta de peso
+        let (mx,my) = if isDirected && (x1 /= x2 || y1 /= y2)
+                      then
+                          let dx = x2 - x1
+                              dy = y2 - y1
+                              len = sqrt (dx*dx + dy*dy)
+                          in if len > 0.1
+                             then let ux = dx / len
+                                      uy = dy / len
+                                      offset = 48  -- coloca el peso justo detrás de la flecha
+                                  in (x2 - ux * offset, y2 - uy * offset)
+                             else ((x1 + x2) / 2, (y1 + y2) / 2)
+                      else ((x1 + x2) / 2, (y1 + y2) / 2)
+        -- Fondo para peso (mejor contraste)
+        let labelW = 24 :: Double
+            labelH = 16 :: Double
+            rx = 4 :: Double
+        bg <- SVG.rect UI.# UI.set (UI.attr "x") (show (mx - labelW/2)) UI.# UI.set (UI.attr "y") (show (my - labelH/2)) UI.# UI.set (UI.attr "width") (show labelW) UI.# UI.set (UI.attr "height") (show labelH) UI.# UI.set (UI.attr "rx") (show rx) UI.# UI.set (UI.attr "ry") (show rx) UI.# UI.set (UI.attr "fill") "#ffe9b3" UI.# UI.set (UI.attr "stroke") "#444" UI.# UI.set (UI.attr "stroke-width") "1"
+        weightText <- SVG.text UI.# UI.set (UI.attr "x") (show mx) UI.# UI.set (UI.attr "y") (show my) UI.# UI.set UI.text (show w) UI.# UI.set (UI.attr "text-anchor") "middle" UI.# UI.set (UI.attr "font-size") "12" UI.# UI.set (UI.attr "font-weight") "bold" UI.# UI.set (UI.attr "fill") "#111" UI.# UI.set (UI.attr "dominant-baseline") "middle"
+        _ <- UI.element svg #+ [return bg, return weightText]
+        return ()
     
     forM_ (take (length vertices) positions) $ \(n, (x,y)) -> do
         circle <- SVG.circle UI.# UI.set (UI.attr "cx") (show x) UI.# UI.set (UI.attr "cy") (show y) UI.# UI.set (UI.attr "r") "25" UI.# UI.set (UI.attr "fill") "lightblue" UI.# UI.set (UI.attr "stroke") "blue" UI.# UI.set (UI.attr "stroke-width") "2"
         text <- SVG.text UI.# UI.set (UI.attr "x") (show x) UI.# UI.set (UI.attr "y") (show (y+5)) UI.# UI.set UI.text (show n) UI.# UI.set (UI.attr "text-anchor") "middle" UI.# UI.set (UI.attr "font-size") "12"
-        UI.element svg #+ [UI.element circle, UI.element text]
+        _ <- UI.element svg #+ [return circle, return text]
+        return ()
     
     return svg
