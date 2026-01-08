@@ -29,7 +29,10 @@ setup window = do
               "line { stroke: #333; stroke-width: 2; }" ++
               "text { font-family: Arial; font-size: 14px; fill: white; text-anchor: middle; dominant-baseline: middle; }" ++
               ".form-group { margin-bottom: 15px; }" ++
-              "label { display: block; margin-bottom: 5px; font-weight: bold; }"
+              "label { display: block; margin-bottom: 5px; font-weight: bold; }" ++
+              ".graph-container { position: relative; }" ++
+              ".back-button { position: absolute; top: 10px; left: 10px; background-color: #222; color: #fff; padding: 8px 12px; border-radius: 4px; }" ++
+              ".back-button:hover { background-color: #444; }"
     
     styleElement <- UI.mkElement "style" UI.# UI.set UI.text css
     
@@ -46,7 +49,13 @@ setup window = do
     
     createButton <- UI.button UI.# UI.set UI.text "Crear Grafo"
     
-    outputDiv <- UI.div
+    messageDiv <- UI.div
+
+    -- Contenedores de vista
+    formContainer <- UI.div
+    graphContent <- UI.div
+    backButton <- UI.button UI.# UI.set UI.text "← Atrás" UI.# UI.set UI.class_ "back-button"
+    graphContainer <- UI.div UI.# UI.set UI.class_ "graph-container" UI.# UI.set (UI.attr "style") "display:none" #+ [return backButton, return graphContent]
     
     -- Evento del botón
     UI.on UI.click createButton $ \_ -> do
@@ -55,29 +64,42 @@ setup window = do
         isDirected <- UI.get UI.checked directedCheckbox
         
         case parseInputs numNodesStr edgesStr isDirected of
-            Left err -> UI.element outputDiv UI.# UI.set UI.text ("Error: " ++ err)
+            Left err -> UI.element messageDiv UI.# UI.set UI.text ("Error: " ++ err)
             Right grafo -> do
                 svg <- renderGraph grafo
-                UI.element outputDiv UI.# UI.set UI.children [svg]
+                -- mostrar vista de grafo
+                UI.element graphContent UI.# UI.set UI.children [svg]
+                UI.element formContainer UI.# UI.set (UI.attr "style") "display:none"
+                UI.element graphContainer UI.# UI.set (UI.attr "style") "display:block"
+                UI.element messageDiv UI.# UI.set UI.text ""
+
+    -- Botón atrás
+    UI.on UI.click backButton $ \_ -> do
+        UI.element graphContainer UI.# UI.set (UI.attr "style") "display:none"
+        UI.element formContainer UI.# UI.set (UI.attr "style") "display:block"
+        UI.element graphContent UI.# UI.set UI.children []
     
     -- Layout
     UI.getBody window #+ [
         UI.element styleElement,
         UI.element title,
-        UI.div UI.# UI.set UI.class_ "form-group" #+ [
-            UI.label UI.# UI.set UI.text "Número de nodos:",
-            UI.element numNodesInput
+        UI.element formContainer #+ [
+            UI.div UI.# UI.set UI.class_ "form-group" #+ [
+                UI.label UI.# UI.set UI.text "Número de nodos:",
+                UI.element numNodesInput
+            ],
+            UI.div UI.# UI.set UI.class_ "form-group" #+ [
+                UI.label UI.# UI.set UI.text "Aristas:",
+                UI.element edgesTextarea
+            ],
+            UI.div UI.# UI.set UI.class_ "form-group" #+ [
+                UI.element directedLabel,
+                UI.element directedCheckbox
+            ],
+            UI.element createButton,
+            UI.element messageDiv
         ],
-        UI.div UI.# UI.set UI.class_ "form-group" #+ [
-            UI.label UI.# UI.set UI.text "Aristas:",
-            UI.element edgesTextarea
-        ],
-        UI.div UI.# UI.set UI.class_ "form-group" #+ [
-            UI.element directedLabel,
-            UI.element directedCheckbox
-        ],
-        UI.element createButton,
-        UI.element outputDiv
+        UI.element graphContainer
         ]
     return ()
 
