@@ -194,17 +194,14 @@ renderGraph (Grafo vertices edges isDirected) = do
                 return ()
         
         -- Agregar etiqueta de peso
-        let (mx,my) = if isDirected && (x1 /= x2 || y1 /= y2)
-                      then
-                          let dx = x2 - x1
-                              dy = y2 - y1
-                              len = sqrt (dx*dx + dy*dy)
-                          in if len > 0.1
-                             then let ux = dx / len
-                                      uy = dy / len
-                                      offset = 48  -- coloca el peso justo detrás de la flecha
-                                  in (x2 - ux * offset, y2 - uy * offset)
-                             else ((x1 + x2) / 2, (y1 + y2) / 2)
+        let dx = x2 - x1
+            dy = y2 - y1
+            len = sqrt (dx*dx + dy*dy)
+            (mx,my) = if len > 0.1
+                      then let ux = dx / len
+                               uy = dy / len
+                               offset = 48  -- coloca el peso hacia el extremo b para evitar solapes
+                           in (x2 - ux * offset, y2 - uy * offset)
                       else ((x1 + x2) / 2, (y1 + y2) / 2)
         -- Fondo para peso (mejor contraste)
         let labelW = 24 :: Double
