@@ -43,24 +43,32 @@ isRegular grafo =
 
 -- Halla el número de independencia de un grafo no dirigido (número máximo de vértices sin aristas entre ellos)
 numeroIndependencia :: Grafo -> Int
-numeroIndependencia g@(Grafo vs as dir) = numeroIndependenciaAux g vs
-    where
-        numeroIndependenciaAux _ [] = 0
-        numeroIndependenciaAux grafo (v:vs) = 
-            let sinVecinos = filter (`notElem` vecinos grafo v) vs
-            in 1 + numeroIndependenciaAux grafo sinVecinos
+numeroIndependencia g@(Grafo vs _ _) = aux vs
+  where
+    aux [] = 0
+    aux (v:vs) =
+        let
+            sinVecinos = filter (`notElem` vecinos g v) vs
+            incluir = 1 + aux sinVecinos
+            excluir = aux vs
+        in
+            max incluir excluir
 
-
+            
 -- Halla el número de clique de un grafo no dirigido (número máximo de vértices con aristas entre todos ellos)
 numeroClique :: Grafo -> Int
-numeroClique g@(Grafo vs as dir) = numeroCliqueAux g vs
-    where
-        numeroCliqueAux _ [] = 0
-        numeroCliqueAux grafo (v:vs) = 
-            let conVecinos = filter (`elem` vecinos grafo v) vs
-            in 1 + numeroCliqueAux grafo conVecinos
+numeroClique g@(Grafo vs _ _) = aux vs
+  where
+    aux [] = 0
+    aux (v:vs) =
+        let
+            conVecinos = filter (`elem` vecinos g v) vs
+            incluir = 1 + aux conVecinos
+            excluir = aux vs
+        in
+            max incluir excluir
 
-
+            
 -- Implementacion de Kruskal
 kruskal :: Grafo -> [Arista]
 kruskal (Grafo vs aristas _) = kruskalAux sortedAristas initialParent []
