@@ -45,7 +45,7 @@ setup window = do
     title <- UI.h1 UI.# UI.set UI.text "Constructor de Grafos"
     
     -- Formulario
-    numNodesInput <- UI.input UI.# UI.set UI.type_ "number" UI.# UI.set (UI.attr "placeholder") "Número de nodos"
+    numNodesInput <- UI.input UI.# UI.set UI.type_ "number" UI.# UI.set (UI.attr "placeholder") "Número de nodos" UI.# UI.set (UI.attr "max") "10"
     
     edgesTextarea <- UI.textarea UI.# UI.set (UI.attr "placeholder") "Aristas (formato: nodo1-nodo2:peso, separadas por coma)\nEjemplo: 1-2:5,2-3:3,1-3:2"
     
@@ -68,7 +68,7 @@ setup window = do
     backButton <- UI.button UI.# UI.set UI.text "← Atrás" UI.# UI.set UI.class_ "back-button"
     graphContainer <- UI.div UI.# UI.set UI.class_ "graph-container" UI.# UI.set (UI.attr "style") "display:none" #+ [return backButton, return graphContent]
 
-    -- Botones de algoritmos (dos columnas)
+    -- Botones de algoritmos 
     let showResult msg = do
             UI.element algoResult UI.# UI.set UI.text msg
             UI.element miniGraphDiv UI.# UI.set UI.children []
@@ -265,8 +265,8 @@ setup window = do
 parseInputs :: String -> String -> Bool -> Either String Grafo
 parseInputs numNodesStr edgesStr isDirected = do
     numNodes <- case readMaybe numNodesStr of
-        Just n | n > 0 -> Right n
-        _ -> Left "Número de nodos inválido"
+        Just n | n > 0 && n <= 10 -> Right n
+        _ -> Left "Número de nodos inválido (1-10)"
     
     let vertices = [1..numNodes]
     
