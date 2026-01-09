@@ -490,8 +490,8 @@ esDAG g = case ordenTopologico g of
 -- Función principal para probar las implementaciones
 main :: IO ()
 main = do
-    let vertices = [1,2,3,4,5,6,7,8]
-    let aristas = [(1,2,1), (2,3,1), (3,4,1), (5,4,1), (5,6,1), (7,6,1), (7,8,1), (8,4,1)]
+    let vertices = [1,2,3,4,5]
+    let aristas = [(1,2,0),(2,3,0),(3,4,0),(1,4,0),(4,5,0)]
     let grafo = Grafo vertices aristas False
     
     --Jery
@@ -510,8 +510,8 @@ main = do
     let dijkstraResult = dijkstra grafo 1
 
     -- Ejemplo de orden topológico (grafo dirigido acíclico)
-    let verticesD = [1,2,3,4,5,6]
-    let aristasD = [(1,2,0),(1,3,0),(2,4,0),(3,4,0),(4,5,0),(5,6,0)]
+    let verticesD = [1,2,3,4,5]
+    let aristasD = [(1,2,0),(2,3,0),(3,4,0),(1,4,0),(4,5,0)]
     let grafoDir = Grafo verticesD aristasD True
     let ordenTop = ordenTopologico grafoDir
     let esDagGrafo = esDAG grafo
