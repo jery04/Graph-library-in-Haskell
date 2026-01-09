@@ -1,6 +1,6 @@
-import Data.List (sortBy, minimumBy, delete)
+import Data.List (sortBy, minimumBy, maximumBy, delete)
 import Data.Ord (comparing)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 
 -- Definición de estructuras de datos
 type Vertice = Int
@@ -119,6 +119,41 @@ isEuleriano g@(Grafo vs as dir)
         grados = [length (vecinos g v) | v <- vs]
         gradosEntrantes = [length [ x | (x, y, _) <- as, y == v ] | v <- vs]
         gradosSalientes = [length [ y | (x, y, _) <- as, x == v ] | v <- vs]
+
+
+-- Calcula in-degree de un vértice (si el grafo es no dirigido, devuelve el grado)
+inDegree :: Grafo -> Vertice -> Int
+inDegree g@(Grafo _ as dir) v
+  | dir = length [ () | (_, y, _) <- as, y == v ]
+  | otherwise = length (vecinos g v)
+
+-- Calcula out-degree de un vértice (si el grafo es no dirigido, devuelve el grado)
+outDegree :: Grafo -> Vertice -> Int
+outDegree g@(Grafo _ as dir) v
+  | dir = length [ () | (x, _, _) <- as, x == v ]
+  | otherwise = length (vecinos g v)
+
+
+-- Encuentra el nodo con mayor out-degree (devuelve Nothing si no hay vértices)
+nodoOutDegreeMaximo :: Grafo -> Maybe (Vertice, Int)
+nodoOutDegreeMaximo (Grafo [] _ _) = Nothing
+nodoOutDegreeMaximo g@(Grafo vs _ _) = Just $ maximumBy (comparing snd) [(v, outDegree g v) | v <- vs]
+
+-- Encuentra el nodo con menor out-degree (devuelve Nothing si no hay vértices)
+nodoOutDegreeMinimo :: Grafo -> Maybe (Vertice, Int)
+nodoOutDegreeMinimo (Grafo [] _ _) = Nothing
+nodoOutDegreeMinimo g@(Grafo vs _ _) = Just $ minimumBy (comparing snd) [(v, outDegree g v) | v <- vs]
+
+
+-- Encuentra el nodo con mayor in-degree (devuelve Nothing si no hay vértices)
+nodoInDegreeMaximo :: Grafo -> Maybe (Vertice, Int)
+nodoInDegreeMaximo (Grafo [] _ _) = Nothing
+nodoInDegreeMaximo g@(Grafo vs _ _) = Just $ maximumBy (comparing snd) [(v, inDegree g v) | v <- vs]
+
+-- Encuentra el nodo con menor in-degree (devuelve Nothing si no hay vértices)
+nodoInDegreeMinimo :: Grafo -> Maybe (Vertice, Int)
+nodoInDegreeMinimo (Grafo [] _ _) = Nothing
+nodoInDegreeMinimo g@(Grafo vs _ _) = Just $ minimumBy (comparing snd) [(v, inDegree g v) | v <- vs]
 
 
 -- Verifica si un grafo es hmiltoniano
@@ -528,9 +563,8 @@ main = do
     putStrLn $ "Arista de mayor peso: " ++ show aristaMax
     putStrLn $ "Peso total: " ++ show pesoGraph
     putStrLn $ "Kruskal (MST): " ++ show kruskalResult
-    case kruskalResult of
-      Just t -> putStrLn $ "Peso MST: " ++ show (pesoTotal t)
-      Nothing -> putStrLn "Kruskal: No se pudo construir MST (grafo no conexo)"
+    let mstGraph = Grafo vertices kruskalResult False
+    putStrLn $ "Peso MST: " ++ show (pesoTotal mstGraph)
     case dijkstraResult of
       Nothing -> putStrLn "Dijkstra: vértice origen no existe o hay pesos negativos"
       Just ds -> putStrLn $ "Dijkstra distancias desde 1: " ++ show ds
@@ -559,3 +593,13 @@ main = do
     putStrLn $ "¿El grafo es euleriano? " ++ show euleriano
     putStrLn $ "¿El grafo es hamiltoniano? " ++ show hamiltoniano
     putStrLn $ "Aristas puentes en el grafo: " ++ show aristaspuente
+    putStrLn $ "inDegree (nodo 4) en grafoDir: " ++ show (inDegree grafoDir 1)
+    putStrLn $ "outDegree (nodo 4) en grafoDir: " ++ show (outDegree grafoDir 1)
+    let nodoInMax = nodoInDegreeMaximo grafoDir
+    let nodoInMin = nodoInDegreeMinimo grafoDir
+    putStrLn $ "Nodo con mayor in-degree: " ++ show nodoInMax
+    putStrLn $ "Nodo con menor in-degree: " ++ show nodoInMin
+    let nodoMax = nodoOutDegreeMaximo grafoDir
+    let nodoMin = nodoOutDegreeMinimo grafoDir
+    putStrLn $ "Nodo con mayor out-degree: " ++ show nodoMax
+    putStrLn $ "Nodo con menor out-degree: " ++ show nodoMin
