@@ -1,4 +1,4 @@
-import Data.List (sortBy, minimumBy, maximumBy, delete)
+import Data.List (sortBy, minimumBy, delete)
 import Data.Ord (comparing)
 import Data.Maybe (fromMaybe, isJust)
 
@@ -523,8 +523,8 @@ esDAG g = case ordenTopologico g of
 -- Función principal para probar las implementaciones
 main :: IO ()
 main = do
-    let vertices = [1,2,3,4,5,6,7,8]
-    let aristas = [(1,2,1), (2,3,1), (3,4,1), (5,4,1), (5,6,1), (7,6,1), (7,8,1), (8,4,1)]
+    let vertices = [1,2,3,4,5]
+    let aristas = [(1,2,0),(2,3,0),(3,4,0),(1,4,0),(4,5,0)]
     let grafo = Grafo vertices aristas False
     
     --Jery
@@ -537,19 +537,6 @@ main = do
     let tieneCiclos = hasCiclos grafo
     let esArbolGrafo = esArbol grafo
     let esBosqueGrafo = esBosque grafo
-    let aristaMin = aristaMenor grafo
-    let aristaMax = aristaMayor grafo
-    let pesoGraph = pesoTotal grafo
-    let kruskalResult = kruskal grafo
-    let dijkstraResult = dijkstra grafo 1
-
-    -- Ejemplo de orden topológico (grafo dirigido acíclico)
-    let verticesD = [1,2,3,4,5,6]
-    let aristasD = [(1,2,0),(1,3,0),(2,4,0),(3,4,0),(4,5,0),(5,6,0)]
-    let grafoDir = Grafo verticesD aristasD True
-    let ordenTop = ordenTopologico grafoDir
-    let esDagGrafo = esDAG grafo
-    let esDagGrafoDir = esDAG grafoDir
     putStrLn $ "Recorrido BFS desde 5: " ++ show resultadoBFS
     putStrLn $ "¿El grafo es conexo? " ++ show conexo
     putStrLn $ "Número de componentes conexas: " ++ show numComponentes
@@ -559,18 +546,6 @@ main = do
     putStrLn $ "¿El grafo tiene ciclos? " ++ show tieneCiclos
     putStrLn $ "¿El grafo es un árbol? " ++ show esArbolGrafo
     putStrLn $ "¿El grafo es un bosque? " ++ show esBosqueGrafo
-    putStrLn $ "Arista de menor peso: " ++ show aristaMin
-    putStrLn $ "Arista de mayor peso: " ++ show aristaMax
-    putStrLn $ "Peso total: " ++ show pesoGraph
-    putStrLn $ "Kruskal (MST): " ++ show kruskalResult
-    let mstGraph = Grafo vertices kruskalResult False
-    putStrLn $ "Peso MST: " ++ show (pesoTotal mstGraph)
-    case dijkstraResult of
-      Nothing -> putStrLn "Dijkstra: vértice origen no existe o hay pesos negativos"
-      Just ds -> putStrLn $ "Dijkstra distancias desde 1: " ++ show ds
-    putStrLn $ "¿El grafo (no dirigido) es DAG? " ++ show esDagGrafo
-    putStrLn $ "¿El grafo dirigido es DAG? " ++ show esDagGrafoDir
-    putStrLn $ "Orden topológico (grafo dirigido): " ++ show ordenTop
 
     --Alex
     let resultadoDFS = dfs grafo 5
@@ -593,13 +568,3 @@ main = do
     putStrLn $ "¿El grafo es euleriano? " ++ show euleriano
     putStrLn $ "¿El grafo es hamiltoniano? " ++ show hamiltoniano
     putStrLn $ "Aristas puentes en el grafo: " ++ show aristaspuente
-    putStrLn $ "inDegree (nodo 4) en grafoDir: " ++ show (inDegree grafoDir 1)
-    putStrLn $ "outDegree (nodo 4) en grafoDir: " ++ show (outDegree grafoDir 1)
-    let nodoInMax = nodoInDegreeMaximo grafoDir
-    let nodoInMin = nodoInDegreeMinimo grafoDir
-    putStrLn $ "Nodo con mayor in-degree: " ++ show nodoInMax
-    putStrLn $ "Nodo con menor in-degree: " ++ show nodoInMin
-    let nodoMax = nodoOutDegreeMaximo grafoDir
-    let nodoMin = nodoOutDegreeMinimo grafoDir
-    putStrLn $ "Nodo con mayor out-degree: " ++ show nodoMax
-    putStrLn $ "Nodo con menor out-degree: " ++ show nodoMin
