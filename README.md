@@ -48,18 +48,3 @@ For iterative development use `ghcid` or `cabal repl` for fast feedback. 🧪
 
 - Use `hlint` for suggestions and `ormolu`/`stylish-haskell` for formatting.
 - Add unit tests for algorithmic behavior (property-based tests recommended).
-
-## Contributing
-
-- Open an issue describing the proposal or bug.
-- Add focused tests for any algorithmic changes.
-- Keep changes minimal and document design choices in PR descriptions.
-
-## License
-
-See `graph-library.cabal` for license metadata. 📜
-
----
-
-If you want, I can: add a CONTRIBUTING file, create a small test harness,
-or commit this `README.md` directly — tell me which you'd prefer. ✅
